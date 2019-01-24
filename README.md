@@ -11,4 +11,4 @@ Contains:
 
 Branching Program
 	-	Sequential
-	-	Paralle
+	-	Parallel
