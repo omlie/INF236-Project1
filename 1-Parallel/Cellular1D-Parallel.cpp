@@ -1,25 +1,27 @@
+#include <mpi.h>
+#include <string.h>
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <map>
-#include <string.h>
 #include <iterator>
 using namespace std;
 
 int step(vector<char>& oldvec, vector<char>& newvec, map<string, char>& rules)
 {
 	oldvec = newvec;
-	for (unsigned int i = 0; i < oldvec.size(); i++)
+	int vecsize = oldvec.size();
+	for (unsigned int i = 0; i < vecsize; i++)
 	{
 		char fst, snd, trd;
 
-		if (i == 0) fst = oldvec[oldvec.size() - 1];
-		else fst = oldvec[i - 1];
+		if (i == 0) fst = oldvec[vecsize - 1];
+		else fst = oldvec[(i - 1) % vecsize];
 		
 		snd = oldvec[i];
 		
-		if (i == oldvec.size() - 1) trd = oldvec[0];
-		else trd = oldvec[i + 1];
+		if (i == vecsize - 1) trd = oldvec[0];
+		else trd = oldvec[(i + 1) % vecsize];
 
 		string triple ="";
 		triple += fst;
@@ -35,6 +37,8 @@ int step(vector<char>& oldvec, vector<char>& newvec, map<string, char>& rules)
 
 int main(int argc, char** argv)
 {
+	int comm_sz;
+	int my_rank;
 	std::map<string, char> transformation_rules;
 	map<string,char>::iterator itr;
 
@@ -51,7 +55,7 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		cout << "Need more arguments."<<endl;
+		cout << "Need more arguments."<< endl;
 		exit(0);
 	}
 
@@ -72,7 +76,7 @@ int main(int argc, char** argv)
 	getline(second_file, s);
 	int config_length = stoi(s);
 	vector<char> oldconfig;
-
+	cout << config_length << endl;
 	char c;
 	while (second_file >> c) 
 	{
@@ -80,7 +84,11 @@ int main(int argc, char** argv)
 	}
 
 	vector<char>newconfig = oldconfig;
-	bool all_iterations[time][config_length]; 
+	//bool all_iterations[time][config_length]; 
+
+	MPI_Init(&argc, &argv);
+	MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
+	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
 	for (int i = 0; i < time; i++)
 	{
@@ -89,12 +97,12 @@ int main(int argc, char** argv)
 		{
 			if(newconfig[j] == '1')
 			{
-				all_iterations[i][j] = true;
+				//all_iterations[i][j] = true;
 				cout << '#';
 			}
 			else
 			{
-				all_iterations[i][j] = false;
+				//all_iterations[i][j] = false;
 				cout << '-';
 			}
 		}
