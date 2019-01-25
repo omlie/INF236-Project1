@@ -9,17 +9,18 @@ using namespace std;
 int step(vector<char>& oldvec, vector<char>& newvec, map<string, char>& rules)
 {
 	oldvec = newvec;
-	for (unsigned int i = 0; i < oldvec.size(); i++)
+	int vecsize = oldvec.size();
+	for (int i = 0; i < vecsize; i++)
 	{
 		char fst, snd, trd;
 
-		if (i == 0) fst = oldvec[oldvec.size() - 1];
-		else fst = oldvec[i - 1];
+		if (i == 0) fst = oldvec[vecsize - 1];
+		else fst = oldvec[(i - 1) % vecsize];
 		
 		snd = oldvec[i];
 		
-		if (i == oldvec.size() - 1) trd = oldvec[0];
-		else trd = oldvec[i + 1];
+		if (i == vecsize - 1) trd = oldvec[0];
+		else trd = oldvec[(i + 1) % vecsize];
 
 		string triple ="";
 		triple += fst;
@@ -71,6 +72,7 @@ int main(int argc, char** argv)
 
 	getline(second_file, s);
 	int config_length = stoi(s);
+	cout << config_length<<endl;
 	vector<char> oldconfig;
 
 	char c;
@@ -80,7 +82,7 @@ int main(int argc, char** argv)
 	}
 
 	vector<char>newconfig = oldconfig;
-	bool all_iterations[time][config_length]; 
+	//bool all_iterations[time][config_length]; 
 
 	for (int i = 0; i < time; i++)
 	{
@@ -89,12 +91,12 @@ int main(int argc, char** argv)
 		{
 			if(newconfig[j] == '1')
 			{
-				all_iterations[i][j] = true;
+				//all_iterations[i][j] = true;
 				cout << '#';
 			}
 			else
 			{
-				all_iterations[i][j] = false;
+				//all_iterations[i][j] = false;
 				cout << '-';
 			}
 		}
