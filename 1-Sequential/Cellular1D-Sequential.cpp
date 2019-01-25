@@ -6,9 +6,11 @@
 #include <iterator>
 using namespace std;
 
-int step(vector<char>& oldvec, vector<char>& newvec, map<string, char>& rules){
+int step(vector<char>& oldvec, vector<char>& newvec, map<string, char>& rules)
+{
 	oldvec = newvec;
-	for (unsigned int i = 0; i < oldvec.size(); i++){
+	for (unsigned int i = 0; i < oldvec.size(); i++)
+	{
 		char fst, snd, trd;
 
 		if (i == 0) fst = oldvec[oldvec.size() - 1];
@@ -33,8 +35,6 @@ int step(vector<char>& oldvec, vector<char>& newvec, map<string, char>& rules){
 
 int main(int argc, char** argv)
 {
-	//vector<int> oldvec{0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0};
-	//vector<int> newvec{0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0};
 	std::map<string, char> transformation_rules;
 	map<string,char>::iterator itr;
 
@@ -80,20 +80,28 @@ int main(int argc, char** argv)
 	}
 
 	vector<char>newconfig = oldconfig;
-
+	bool all_iterations[time][config_length]; 
 
 	for (int i = 0; i < time; i++)
 	{
 
-		for(char i : newconfig)
+		for(unsigned int j = 0; j < newconfig.size(); ++j)
 		{
-			if(i == '1')
-				std::cout << '#';
+			if(newconfig[j] == '1')
+			{
+				all_iterations[i][j] = true;
+				cout << '#';
+			}
 			else
-				std::cout << '-';
+			{
+				all_iterations[i][j] = false;
+				cout << '-';
+			}
 		}
 		cout << "" << endl;
 		step(oldconfig, newconfig, transformation_rules);
 	}
+
+
 	return 0;
 }
