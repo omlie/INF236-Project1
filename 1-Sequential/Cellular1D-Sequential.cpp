@@ -6,10 +6,9 @@
 #include <iterator>
 using namespace std;
 
-int step(vector<char>& oldvec, vector<char>& newvec, map<string, char>& rules)
+int step(vector<char>& oldvec, vector<char>& newvec, map<string, char>& rules, int& vecsize)
 {
 	oldvec = newvec;
-	int vecsize = oldvec.size();
 	for (int i = 0; i < vecsize; i++)
 	{
 		char fst, snd, trd;
@@ -33,6 +32,8 @@ int step(vector<char>& oldvec, vector<char>& newvec, map<string, char>& rules)
 
 	return 0;
 }
+
+
 
 int main(int argc, char** argv)
 {
@@ -72,7 +73,6 @@ int main(int argc, char** argv)
 
 	getline(second_file, s);
 	int config_length = stoi(s);
-	cout << config_length<<endl;
 	vector<char> oldconfig;
 
 	char c;
@@ -81,29 +81,24 @@ int main(int argc, char** argv)
 		oldconfig.push_back(c);	
 	}
 
-	vector<char>newconfig = oldconfig;
-	//bool all_iterations[time][config_length]; 
+	vector<char> newconfig = oldconfig;
+	vector<vector<char>> all_iterations = {newconfig}; 
 
 	for (int i = 0; i < time; i++)
 	{
-
-		for(unsigned int j = 0; j < newconfig.size(); ++j)
-		{
-			if(newconfig[j] == '1')
-			{
-				//all_iterations[i][j] = true;
-				cout << '#';
-			}
-			else
-			{
-				//all_iterations[i][j] = false;
-				cout << '-';
-			}
-		}
-		cout << "" << endl;
-		step(oldconfig, newconfig, transformation_rules);
+		step(oldconfig, newconfig, transformation_rules, config_length);
+		all_iterations.push_back(newconfig);
 	}
-
-
+	
+	ofstream output_file("allIterations.txt");
+	
+	for (unsigned int i = 0; i < all_iterations.size(); i++)
+	{
+			for(unsigned int j = 0; j < all_iterations[i].size(); ++j)
+				output_file << all_iterations[i][j];
+			output_file << "" << endl;
+	}
+	
+	output_file.close();
 	return 0;
 }
