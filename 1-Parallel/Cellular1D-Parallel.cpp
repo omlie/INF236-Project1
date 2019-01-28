@@ -1,17 +1,16 @@
 #include <mpi.h>
-#include <string.h>
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <map>
+#include <string.h>
 #include <iterator>
 using namespace std;
 
-int step(vector<char>& oldvec, vector<char>& newvec, map<string, char>& rules)
+int step(vector<char>& oldvec, vector<char>& newvec, map<string, char>& rules, int& vecsize)
 {
 	oldvec = newvec;
-	int vecsize = oldvec.size();
-	for (unsigned int i = 0; i < vecsize; i++)
+	for (int i = 0; i < vecsize; i++)
 	{
 		char fst, snd, trd;
 
@@ -23,22 +22,18 @@ int step(vector<char>& oldvec, vector<char>& newvec, map<string, char>& rules)
 		if (i == vecsize - 1) trd = oldvec[0];
 		else trd = oldvec[(i + 1) % vecsize];
 
-		string triple ="";
-		triple += fst;
-		triple += snd;
-		triple += trd;
+		string triple = "" + fst + snd + trd;
 
 		newvec[i] = rules[triple];
-		
 	}
 
 	return 0;
 }
 
+
+
 int main(int argc, char** argv)
 {
-	int comm_sz;
-	int my_rank;
 	std::map<string, char> transformation_rules;
 	map<string,char>::iterator itr;
 
@@ -55,7 +50,7 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		cout << "Need more arguments."<< endl;
+		cout << "Need more arguments."<<endl;
 		exit(0);
 	}
 
@@ -76,40 +71,32 @@ int main(int argc, char** argv)
 	getline(second_file, s);
 	int config_length = stoi(s);
 	vector<char> oldconfig;
-	cout << config_length << endl;
+
 	char c;
 	while (second_file >> c) 
 	{
 		oldconfig.push_back(c);	
 	}
 
-	vector<char>newconfig = oldconfig;
-	//bool all_iterations[time][config_length]; 
+	vector<char> newconfig = oldconfig;
+	vector<vector<char>> all_iterations = {newconfig}; 
 
-	MPI_Init(&argc, &argv);
-	MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
-	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
 	for (int i = 0; i < time; i++)
 	{
-
-		for(unsigned int j = 0; j < newconfig.size(); ++j)
-		{
-			if(newconfig[j] == '1')
-			{
-				//all_iterations[i][j] = true;
-				cout << '#';
-			}
-			else
-			{
-				//all_iterations[i][j] = false;
-				cout << '-';
-			}
-		}
-		cout << "" << endl;
-		step(oldconfig, newconfig, transformation_rules);
+		step(oldconfig, newconfig, transformation_rules, config_length);
+		all_iterations.push_back(newconfig);
 	}
-
-
+	
+	ofstream output_file("allIterations.txt");
+	
+	for (unsigned int i = 0; i < all_iterations.size(); i++)
+	{
+			for(unsigned int j = 0; j < all_iterations[i].size(); ++j)
+				output_file << all_iterations[i][j];
+			output_file << "" << endl;
+	}
+	
+	output_file.close();
 	return 0;
 }

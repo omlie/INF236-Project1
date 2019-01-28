@@ -21,10 +21,7 @@ int step(vector<char>& oldvec, vector<char>& newvec, map<string, char>& rules, i
 		if (i == vecsize - 1) trd = oldvec[0];
 		else trd = oldvec[(i + 1) % vecsize];
 
-		string triple ="";
-		triple += fst;
-		triple += snd;
-		triple += trd;
+		string triple = "" + fst + snd + trd;
 
 		newvec[i] = rules[triple];
 		
