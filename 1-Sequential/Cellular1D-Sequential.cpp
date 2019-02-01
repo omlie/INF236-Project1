@@ -21,7 +21,8 @@ int step(vector<char>& oldvec, vector<char>& newvec, map<string, char>& rules, i
 		if (i == vecsize - 1) trd = oldvec[0];
 		else trd = oldvec[(i + 1) % vecsize];
 
-		string triple = "" + fst + snd + trd;
+		vector<char> nb = {fst, snd, trd};
+		string triple(nb.begin(), nb.end());
 
 		newvec[i] = rules[triple];
 		
@@ -86,6 +87,10 @@ int main(int argc, char** argv)
 		step(oldconfig, newconfig, transformation_rules, config_length);
 		all_iterations.push_back(newconfig);
 	}
+
+	for (char i : newconfig)
+		cout << i;
+	cout << endl;
 	
 	ofstream output_file("allIterations.txt");
 	
