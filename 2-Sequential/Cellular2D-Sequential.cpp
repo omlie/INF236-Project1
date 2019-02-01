@@ -14,43 +14,38 @@ int step(vector<vector<char>>& oldvec, vector<vector<char>>& newvec, map<string,
 		for (int col = 0; col < vecsize; col++)
 		{
 			char a, b, c, d, current, f, g, h, i;
+			a = b = c = d = f = g = h = i = '0',
 
 			current = oldvec[row][col];
 
 			if(row != 0 && col != 0)
-			{
 				a = oldvec[row - 1][col - 1];
+			
+			if(row != 0 && col != vecsize - 1)
 				c = oldvec[row - 1][col + 1];
-			}
-			else
-			{
-				a = 0;
-				c = 0;
-			}
-
-			if (row != vecsize - 1 && col != vecsize - 1)
-			{
+			
+			if (row != vecsize - 1 && col != 0)
 				g = oldvec[row + 1][col - 1];
+			
+			if (row != vecsize - 1 && col != vecsize - 1)
 				i = oldvec[row + 1][col + 1];
-			}
-			else{
-
-				g = 0;
-				i = 0;
-			}
-
+			
 			if (row != 0)
 				b = oldvec[row - 1][col];
+			
 			if (row != vecsize - 1)
 				h = oldvec[row + 1][col];
+			
 			if (col != 0)
 				d = oldvec[row][col - 1];
+			
 			if (col != vecsize - 1)
 				f = oldvec[row][col + 1];
-
-			string result = "" + a + b + c + d + current + f + g + h + i;
-
-			newvec[i] = rules[result];
+			
+			vector<char> nb= {a, b, c, d, current, f, g, h, i};
+			string result(nb.begin(), nb.end());
+			
+			newvec[row][col] = rules[result];
 			
 		}
 		
@@ -81,30 +76,30 @@ int main(int argc, char** argv)
 		exit(0);
 	}
 
-
 	ifstream first_file(transformation_function_file);
 
 	string s;
-	while(getline(first_file, s))
+	while(!first_file.eof())
 	{
-		string key = s.substr(0,3);
+		getline(first_file, s);
+		string key = s.substr(0,9);
 		char val = s.at(s.length() - 1);
 		transformation_rules.insert(pair<string, char>(key, val));
 	}
 
 	first_file.close();
 	ifstream second_file(inital_config_file);
-
 	getline(second_file, s);
 	int config_length = stoi(s);
 	vector<vector<char>> oldconfig;
 
-	for (int row = 0; row < config_length; row++){
-		for (int col = 0; col < config_length; col++){
-			second_file >> oldconfig[row][col];
-		}
+	while (!second_file.eof()){
+		getline(second_file, s);
+		vector<char> data(s.begin(), s.end());
+		oldconfig.push_back(data);
 	}
 
+	
 	vector<vector<char>> newconfig = oldconfig;
 	vector<vector<vector<char>>> all_iterations = {newconfig}; 
 
@@ -114,13 +109,21 @@ int main(int argc, char** argv)
 		all_iterations.push_back(newconfig);
 	}
 	
+	for (vector<char> vec : newconfig){
+		for (char c : vec)
+			cout << c;
+		cout << endl;
+	}
+	
 	ofstream output_file("allIterations.txt");
 	
 	for (unsigned int i = 0; i < all_iterations.size(); i++)
 	{
-			for(unsigned int j = 0; j < all_iterations[i].size(); ++j)
-				output_file << all_iterations[i][j][j];
-			output_file << "" << endl;
+			for(unsigned int j = 0; j < all_iterations[i].size(); ++j){
+				for (char c : all_iterations[i][j])
+					output_file << c;
+				output_file << endl;
+			}
 	}
 	
 	output_file.close();
