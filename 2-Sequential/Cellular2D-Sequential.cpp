@@ -98,6 +98,7 @@ int main(int argc, char** argv)
 		vector<char> data(s.begin(), s.end());
 		oldconfig.push_back(data);
 	}
+	second_file.close();
 
 	
 	vector<vector<char>> newconfig = oldconfig;
