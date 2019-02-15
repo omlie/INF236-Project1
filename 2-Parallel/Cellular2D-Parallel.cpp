@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <map>
+#include <ctime>
 #include <string.h>
 #include <iterator>
 using namespace std;
@@ -69,6 +70,7 @@ int step(char** board, char** newboard, map<string, char>& rules, int& height, i
 /** MAIN PROGRAM - MPI LOGIC**/
 int main(int argc, char** argv)
 {
+    double start_time = MPI_Wtime();
     int rank, size;
     
     MPI_Init(&argc, &argv);
@@ -278,5 +280,7 @@ int main(int argc, char** argv)
     if (rank == 0) destroy_2d_char(global_board, dimension);
 
     MPI_Finalize();
+    double end_time = MPI_Wtime();
+    if (rank == 0) cout << "Finised in " << end_time - start_time <<  endl;
     return 0;
 }
