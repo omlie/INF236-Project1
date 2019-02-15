@@ -3,13 +3,13 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <ctime>
 #include <string.h>
 #include <iterator>
 using namespace std;
 
-
-
 int main(int argc, char** argv) {
+	double start_time = MPI_Wtime();
 	int rank, size;
 	
 	MPI_Init(&argc, &argv);  //initialize MPI library
@@ -197,5 +197,7 @@ int main(int argc, char** argv) {
 
 	}
 	MPI_Finalize(); //MPI cleanup
+	double end_time = MPI_Wtime();
+	if (rank == 0) cout << end_time - start_time << endl;
 	return 0;
 }

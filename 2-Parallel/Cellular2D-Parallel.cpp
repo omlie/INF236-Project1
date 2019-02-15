@@ -281,6 +281,6 @@ int main(int argc, char** argv)
 
     MPI_Finalize();
     double end_time = MPI_Wtime();
-    if (rank == 0) cout << "Finised in " << end_time - start_time <<  endl;
+    if (rank == 0) cout << end_time - start_time <<  endl;
     return 0;
 }
