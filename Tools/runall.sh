@@ -1,29 +1,40 @@
 #!/bin/bash
 
-#module load mpi/openmpi-x86_64
-mpiCC -std=c++11 ../1-Parallel/Cellular1D-Parallel.cpp -O3 -o 1parallel.o
-#mpiCC -std=c++11 ../2-Parallel/Cellular2D-Parallel.cpp -O3 -o 2parallel.o
-g++ -std=c++11 generateinput.cpp -o generateinput.o
+module load mpi/openmpi-x86_64
+mpiCC -std=c++11 1D-Parallel.cpp -O3 -o 1parallel.o
+mpiCC -std=c++11 2D-Parallel.cpp -O3 -o 2parallel.o
 
-rm results1D.txt
-echo Running parallel 1D automata
+mkdir output
 
 k=( 10 11 12 13 14 15 16 17 18 19 20 )
-N=( 1024 2048 4096 8192 16384 32768 65536 )
-processes=( 2 4 8 )  #16 32 64 128 256 516 ) 
+N=( 1024 2048 4096 8192 16384 32768 ) #65536 )
+processes=( 2 4 8 16 32 64 128 256 512 ) 
 
-printf "\t\t %s \t" "${processes[@]}"  >> results1D.txt
+echo Running parallel 1D automata
+printf "%15s" "${processes[@]}"  >> output/results1D.txt
 for i in "${k[@]}"
 do
-	rm middle"$i".txt
-	s=$(./generateinput.o "$i")
-	echo "$s" >> middle"$i".txt
-	declare -a result
 	result=()
 	for p in "${processes[@]}"
 	do
-		result=("${result[@]}" $(mpirun -np "$p" ./1parallel.o mod2.txt middle"$i".txt 10))
+		echo Running with size "$i" and "$p" processes
+		result=("${result[@]}" $(mpiexec -np "$p" ./1parallel.o rules/mod2.txt input/middle"$i".txt 1000000))
 	done
-	printf "\n $i" >> results1D.txt
-	printf "\t %s" "${result[@]}" >> results1D.txt
+	printf "\n $i" >> output/results1D.txt
+	printf "%15s" "${result[@]}" >> output/results1D.txt
+done
+
+
+echo Running parallel 2D automata
+printf "%15s" "${processes[@]}"  >> output/results2D.txt
+for i in "${N[@]}"
+do
+	result=()
+	for p in "${processes[@]}"
+	do
+		echo Running with size "$i" and "$p" processes
+		result=("${result[@]}" $(mpiexec -np "$p" ./2parallel.o rules/gameoflife.txt input/gameoflife"$i".txt 10))
+	done
+	printf "\n $i" >> output/results2D.txt
+	printf "%15s" "${result[@]}" >> output/results2D.txt
 done

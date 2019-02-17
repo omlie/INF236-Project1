@@ -191,8 +191,6 @@ int main(int argc, char** argv)
         }
     }
 
-    MPI_Barrier(MPI_COMM_WORLD); // WAIT UNTIL ALL DATA HAS BEEN ALLOCATED TO PROCESSES
-
     sizeof_subarray = (int *)malloc(size * sizeof(int));// ALLOCATED SIZE OF GLOBAL ARRAY
     displacement = (int *)malloc(size * sizeof(int));   // PLACEMENT OF ALLOCATION IN GLOBAL ARRAY 
 
@@ -204,13 +202,15 @@ int main(int argc, char** argv)
 
     int numrows = sizeof_subarray[rank]/dimension; //NUMBER OF ROWS ALLOCATED
 
+    local_board = alloc_2d_char(numrows, dimension); // ARRAY TO PROCESS
+
+    /**SCATTER GLOBAL ARRAY INTO EACH PROCESS' LOCAL ARRAY**/
+    MPI_Scatterv(rank == 0 ? &global_board[0][0] : NULL, sizeof_subarray, displacement, MPI_CHAR, 
+                &local_board[0][0], sizeof_subarray[rank], MPI_CHAR, 0, MPI_COMM_WORLD);
+    
     /** UPDATE BOARD N TIMES **/
     for (int t = 0; t < time; t++){
-        local_board = alloc_2d_char(numrows, dimension); // ARRAY TO PROCESS
 
-        /**SCATTER GLOBAL ARRAY INTO EACH PROCESS' LOCAL ARRAY**/
-        MPI_Scatterv(rank == 0 ? &global_board[0][0] : NULL, sizeof_subarray, displacement, MPI_CHAR, 
-                     &local_board[0][0], sizeof_subarray[rank], MPI_CHAR, 0, MPI_COMM_WORLD);
 
         /** NEIGHBOUR PROCESSES **/
         int UP = rank == 0 ? size - 1 : rank - 1, 
@@ -231,11 +231,13 @@ int main(int argc, char** argv)
            toup[j] = local_board[first_row][j];
            todown[j] = local_board[second_row][j];
         }
-
-        MPI_Send(&toup[0], dimension, MPI_BYTE, UP, FROMDOWNTOUP, MPI_COMM_WORLD);
-        MPI_Send(&todown[0], dimension, MPI_BYTE, DOWN, FROMUPTODOWN, MPI_COMM_WORLD);
+        
+        MPI_Request req;
+        MPI_Isend(&toup[0], dimension, MPI_BYTE, UP, FROMDOWNTOUP, MPI_COMM_WORLD, &req);
+        MPI_Isend(&todown[0], dimension, MPI_BYTE, DOWN, FROMUPTODOWN, MPI_COMM_WORLD, &req);
         MPI_Recv(&fromup[0], dimension, MPI_BYTE, UP, FROMUPTODOWN, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Recv(&fromdown[0], dimension, MPI_BYTE, DOWN, FROMDOWNTOUP, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Request_free(&req);
 
         /** CREATE BOARD WITH LOCAL ARRAY AND RECEIVED ROWS **/
         board_with_neighbours = alloc_2d_char(numrows + 2, dimension);
@@ -254,14 +256,12 @@ int main(int argc, char** argv)
         
         /** GAME LOGIC ON LOCAL ARRAY**/
         step(board_with_neighbours, local_board, transformation_rules, numrows, dimension);
-        
-        /** UPDATE GLOBAL ARRAY WITH PROCESSED LOCAL ARRAYS**/
-        MPI_Gatherv(&local_board[0][0], sizeof_subarray[rank], MPI_CHAR,
-                    rank == 0 ? &global_board[0][0] : NULL, sizeof_subarray, displacement, MPI_CHAR,
-                    0, MPI_COMM_WORLD);
-
-        MPI_Barrier(MPI_COMM_WORLD);
     }
+
+    /** UPDATE GLOBAL ARRAY WITH PROCESSED LOCAL ARRAYS**/
+    MPI_Gatherv(&local_board[0][0], sizeof_subarray[rank], MPI_CHAR,
+                rank == 0 ? &global_board[0][0] : NULL, sizeof_subarray, displacement, MPI_CHAR,
+                0, MPI_COMM_WORLD);
 
     /** PRINT CONFIGURATION AFTER N STEPS **/
     if (rank == 0)
@@ -273,6 +273,7 @@ int main(int argc, char** argv)
             cout << endl;
         }
     }
+
     
     /** DEALLOCATE MEMORY OF USED ARRAYS **/
     destroy_2d_char(local_board, numrows);

@@ -8,6 +8,38 @@
 #include <iterator>
 using namespace std;
 
+char *alloc_1d_char(int length)
+{
+	char *arr = (char *)malloc(length*sizeof(char));
+	return arr;
+}
+
+int step(char *board, char recv_fst, char recv_trd, map<string, char>& rules, int length)
+{
+	char *oldboard = alloc_1d_char(length);
+	copy(&board[0], &board[0]+length, &oldboard[0]);
+	for (int i = 0; i < length; i++)
+	{
+		char fst, snd, trd = '0';
+		if (i == 0)
+			fst = recv_fst;
+		else
+			fst = oldboard[(i - 1) % length];
+		if (i == length - 1)
+			trd = recv_trd;
+		else
+			trd = oldboard[(i + 1) % length];
+
+		snd = board[i];
+
+		vector<char> nb= {fst, snd, trd};
+        string result(nb.begin(), nb.end());
+		board[i] = rules[result];
+	}
+	delete [] oldboard;
+	return 0;
+}
+
 int main(int argc, char** argv) {
 	double start_time = MPI_Wtime();
 	int rank, size;
@@ -16,13 +48,16 @@ int main(int argc, char** argv) {
 	MPI_Comm_size(MPI_COMM_WORLD, &size); //get number of processes
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank); //get my process id
 
-	int time, numrules;
+	int time, numrules, length;
+	char *global_board, *local_board, tempfst, temptrd;
+	vector<vector<char>> all_iterations;
+	int *sizeof_subarray, *displacement;
+	map<string, char> transformation_rules;
 	int CONFIG = 1, STATE = 2, KEY = 3, VALUE = 4;
 
 	if (rank == 0) 
 	{
 		string transformation_function_file, inital_config_file;
-		int time;
 
 		if (argc == 4)
 		{
@@ -35,7 +70,6 @@ int main(int argc, char** argv) {
 			cout << "Need more arguments."<<endl;
 			exit(0);
 		}
-
 
 		ifstream first_file(transformation_function_file);
 
@@ -54,18 +88,17 @@ int main(int argc, char** argv) {
 		ifstream second_file(inital_config_file);
 
 		getline(second_file, s);
-		vector<char> oldconfig;
+		length = stoi(s);
+		global_board = alloc_1d_char(length);
 
 		char c;
+		int i = 0;
 		while (second_file >> c) 
 		{
-			oldconfig.push_back(c);	
+			global_board[i] = c;
+			i++	;
 		}
-
-		
-		int allocated = oldconfig.size() / (size - 1);
-		int remainder = oldconfig.size() % (size - 1);
-
+		MPI_Bcast(&length, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&time, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&numrules, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
@@ -74,57 +107,20 @@ int main(int argc, char** argv) {
 			for (int i = 0; i < numrules; i++)
 			{
 				string key = keys[i];
-				char value = values[i];
-				MPI_Send(key.c_str(), key.length(), MPI_CHAR, s, KEY, MPI_COMM_WORLD);
-				MPI_Send(&value, 1, MPI_CHAR, s, VALUE, MPI_COMM_WORLD);
+                char value = values[i];
+                transformation_rules.insert(pair<string,char>(key, value));
+                MPI_Send(key.c_str(), key.length(), MPI_CHAR, s, KEY, MPI_COMM_WORLD);
+                MPI_Send(&value, 1, MPI_CHAR, s, VALUE, MPI_COMM_WORLD);
 			}
-		}
-
-		vector<vector<char>> all_iterations = {oldconfig}; 
-
-		for (int s = 0; s < time; s++)
-		{
-
-			for (int i = 0; i < size - 1; i++)
-			{
-				int msgsize = allocated;
-				if (i == size - 2)
-					msgsize = allocated + remainder;
-				MPI_Send(&msgsize, 1, MPI_INT, i + 1, 0, MPI_COMM_WORLD);
-				MPI_Send(&oldconfig[i * allocated], msgsize, MPI_BYTE, i + 1, CONFIG, MPI_COMM_WORLD);
-			}
-			vector<char> nextconfig;
-			for (int i = 0; i < size - 1; i++)
-			{
-				std::vector<char> receive;
-				int sz;
-				MPI_Recv(&sz, 1, MPI_INT, i + 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-				receive.resize(sz);
-				MPI_Recv(&receive[0], sz, MPI_BYTE, i + 1, CONFIG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-				
-				for (int x: receive)
-					nextconfig.push_back(x);
-			}
-			
-			oldconfig = nextconfig;
-			all_iterations.push_back(oldconfig);
-		}
-		ofstream output_file("allIterations.txt");
-	
-		for (unsigned int i = 0; i < all_iterations.size(); i++)
-		{
-				for(unsigned int j = 0; j < all_iterations[i].size(); ++j)
-					output_file << all_iterations[i][j];
-				output_file << "" << endl;
 		}
 		
-		output_file.close();
+		all_iterations = {};
 	}
-	else
+	if (rank != 0)
 	{
+		MPI_Bcast(&length, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&time, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&numrules, 1, MPI_INT, 0, MPI_COMM_WORLD);
-		map<string, char> transformation_rules;
 
 		for (int i = 0; i < numrules; i++)
 		{
@@ -140,64 +136,68 @@ int main(int argc, char** argv) {
 			MPI_Recv(&value, 1, MPI_CHAR, 0, VALUE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			transformation_rules.insert(pair<string,char>(key, value));
 		}
-		
-		for (int s = 0; s < time; s++)
-		{
-			int msgsize, vecsize, LEFT, RIGHT;
-			vector<char> fromconfig, toconfig;
-			char fst, snd, trd, tempfst, temptrd;
-			
-			MPI_Recv(&msgsize, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			fromconfig.resize(msgsize);
-			MPI_Recv(&fromconfig[0], msgsize, MPI_BYTE, 0, CONFIG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		 	vecsize = fromconfig.size();
-			toconfig = fromconfig;
+	}
 
-			if ((rank - 1) == 0)
-				LEFT = size - 1;
-			else
-				LEFT = rank - 1;
-			if ((rank + 1) == size)
-				RIGHT = 1;
-			else
-				RIGHT = rank + 1;
+	MPI_Barrier(MPI_COMM_WORLD);
+	
+	sizeof_subarray = (int *)malloc(size * sizeof(int));// ALLOCATED SIZE OF GLOBAL ARRAY
+    displacement = (int *)malloc(size * sizeof(int));   // PLACEMENT OF ALLOCATION IN GLOBAL ARRAY 
 
-			
-			MPI_Send(&fromconfig[0], 1, MPI_BYTE, LEFT, STATE, MPI_COMM_WORLD);
-			MPI_Send(&fromconfig[vecsize - 1], 1, MPI_BYTE, RIGHT, STATE, MPI_COMM_WORLD);
-			MPI_Recv(&tempfst, 1, MPI_BYTE, LEFT, STATE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			MPI_Recv(&temptrd, 1, MPI_BYTE, RIGHT, STATE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			
-			for (int i = 0; i < vecsize; i++)
-			{
-				if (i == 0)
-					fst = tempfst;
-				else
-					fst = fromconfig[(i - 1) % vecsize];
-				if (i == vecsize - 1)
-					trd = temptrd;
-				else
-					trd = fromconfig[(i + 1) % vecsize];
+    for (int thisrank = 0; thisrank < size; thisrank++)
+    {
+        sizeof_subarray[thisrank] = ((thisrank + 1)*(length)/(size) - (thisrank)*(length)/(size));
+        displacement[thisrank] = (thisrank*length/size);
+    }
 
-				snd = fromconfig[i];
+    local_board = alloc_1d_char(sizeof_subarray[rank]);
 
-				string triple = "";
-				triple += fst;
-				triple += snd; 
-				triple += trd;
-			
-				toconfig[i] = transformation_rules[triple];
-			}
+	MPI_Scatterv(rank == 0 ? &global_board[0] : NULL, sizeof_subarray, displacement, MPI_CHAR, 
+                 &local_board[0], sizeof_subarray[rank], MPI_CHAR, 0, MPI_COMM_WORLD);
+	
 
-			int newsize = toconfig.size();
-			MPI_Send(&newsize, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-			MPI_Send(&toconfig[0], newsize, MPI_BYTE, 0, CONFIG, MPI_COMM_WORLD);
-
+	for (int s = 0; s < time; s++)
+	{
+		if(rank == 0){
+			vector<char> data(global_board, global_board + length);
+			all_iterations.push_back(data);
 		}
 
+		int LEFT, RIGHT;
+		if (rank == 0)
+			LEFT = size - 1;
+		else
+			LEFT = rank - 1;
+		if (rank == size - 1)
+			RIGHT = 0;
+		else
+			RIGHT = rank + 1;
+
+		MPI_Send(&local_board[0], 1, MPI_BYTE, LEFT, STATE, MPI_COMM_WORLD);
+		MPI_Send(&local_board[sizeof_subarray[rank] - 1], 1, MPI_BYTE, RIGHT, STATE, MPI_COMM_WORLD);
+		MPI_Recv(&tempfst, 1, MPI_BYTE, LEFT, STATE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		MPI_Recv(&temptrd, 1, MPI_BYTE, RIGHT, STATE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+		step(local_board, tempfst, temptrd, transformation_rules, sizeof_subarray[rank]);
+		
+		MPI_Gatherv(&local_board[0], sizeof_subarray[rank], MPI_CHAR,
+                    rank == 0 ? &global_board[0] : NULL, sizeof_subarray, displacement, MPI_CHAR,
+                    0, MPI_COMM_WORLD);
 	}
-	MPI_Finalize(); //MPI cleanup
+	
 	double end_time = MPI_Wtime();
-	if (rank == 0) cout << end_time - start_time << endl;
+	MPI_Finalize(); //MPI cleanup
+	
+	if (rank==0){ 
+		cout << end_time - start_time << endl;
+		/*ofstream output_file("allIterations.txt");
+		for (unsigned int i = 0; i < all_iterations.size(); i++)
+		{
+			for(unsigned int j = 0; j < all_iterations[i].size(); ++j)
+				output_file << all_iterations[i][j];
+			output_file  << endl;
+		}	
+		output_file.close();*/
+	}
 	return 0;
 }
+		
