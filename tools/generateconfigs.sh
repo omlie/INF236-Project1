@@ -7,6 +7,7 @@ g++ -std=c++11 generategameoflife.cpp -o generategameoflife.o
 k=( 10 11 12 13 14 15 16 17 18 19 20 )
 N=( 1024 2048 4096 8192 16384 32768 65536 )
 
+mkdir input
 
 for i in "${k[@]}"
 do
@@ -17,3 +18,6 @@ for i in "${N[@]}"
 do
 	./generategameoflife.o "$i"
 done
+
+mv middle* input
+mv gameoflife* input
