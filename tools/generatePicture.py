@@ -3,16 +3,17 @@ from PIL import Image
 rows = []
 with open('allIterations.txt') as fp:
     for row in fp:
-        rows.append(row.rstrip('\n'))
+        r = list(map(int, list(row.split()[0])))
+        rows.append(r)
 
 (r, c) = (len(rows), len(rows[0]))
 
-img = Image.new('1', (r, c))
+img = Image.new('1', (c, r))
 pixels = img.load()
 
-for y in range(r):
-    for x in range(c):
-        pixels[y, x] = 1 if rows[y][x] == '0' else 0
+for x in range(r):
+    for y in range(c):
+        pixels[y, x] = not rows[x][y]
 
 
 img.save('image.bmp')
